@@ -34,6 +34,16 @@ download_tiles(
 
 memory.limit(56000)
 
+# extract stack for us --------------
+us <- extract_gfc(
+  u,
+  data_folder = "/Users/kayla/Documents/thesis_data/us/gfc",
+  to_UTM = FALSE,
+  stack = "change",
+  dataset = "GFC-2019-v1.7",
+)
+
+
 # extract stack for us & canada ------------
 forest <- extract_gfc(
   d,
@@ -43,12 +53,6 @@ forest <- extract_gfc(
   dataset = "GFC-2019-v1.7",
   filename = "us_canada_cover.tiff", format = "GTiff", options = c("INTERLEAVE=BAND", "COMPRESS=LZW")
 )
-
-
-
-# get different loss layers ----------
-setwd("/Users/kayla/Documents/thesis_data")
-load("gfc_forest_extract.RData")
 
 writeRaster(forest, "gfc_analysis.tif", format= "GTiff", options = c("INTERLEAVE=BAND", "COMPRESS=LZW"))
 
@@ -62,12 +66,19 @@ writeRaster(loss, "lossyear.tif", format = "GTiff")
 writeRaster(gain, "forestgain.tif", format = "GTiff")
 
 
+
+## ANNUAL TREE COVER FROM 2000 TO 2019 ##
+
 # initial 2001 -------
 mask <- reclassify(loss, 
                    rbind(c(1,NA)))
 
 treecover2001 <- mask(cover, mask)
 writeRaster(treecover2001, "treecover2001.tif", sep = "")
+
+# check plots -------
+plot(cover)
+plot(treecover2001)
 
 forestcover <- vector("list")
 forestcover[1] <- treecover2001

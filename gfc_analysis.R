@@ -34,16 +34,6 @@ download_tiles(
 
 memory.limit(56000)
 
-# extract stack for us --------------
-us <- extract_gfc(
-  u,
-  data_folder = "/Users/kayla/Documents/thesis_data/us/gfc",
-  to_UTM = FALSE,
-  stack = "change",
-  dataset = "GFC-2019-v1.7",
-)
-
-
 # extract stack for us & canada ------------
 forest <- extract_gfc(
   d,

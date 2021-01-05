@@ -3,8 +3,9 @@ library(rgdal)
 
 # load in ---------
 setwd("/Users/kayla/Documents/thesis_data/arcmap")
-d <- readOGR("buffer_dataset.shp")
-d3 <- readOGR("buffer_dataset3km.shp")
+d <- readOGR("buffer_dataset_1km.shp") # dataset where bbs coords <= 1 km from , buffer 1km
+# d2 <- readOGR("buffered_dataset.shp") # dataset where bbs coords <= 3 km from line, buffer 1km
+# d3 <- readOGR("buffer_dataset_3km.shp") # data where bbs coords <= 3 km from line, buffer 3 km
 
 # determine which tiles in the GFC are needed to cover AOI -----------
 tiles <- calc_gfc_tiles(d)

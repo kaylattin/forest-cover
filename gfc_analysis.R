@@ -78,15 +78,6 @@ for(i in 1:19) {
   }
 
 
-# repeat for 3km buffered area -------
-results3km <- vector("list")
-for(i in 1:19) {
-  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
-  results[[i]] <- extract(forestcover[[i]], d3, fun = mean, df = TRUE, normalizeWeights = TRUE)
-  writeOGR(results[[i]], dsn = "/Users/kayla/Documents/thesis_data/arcmap", layer = listb[i], driver = "ESRI Shapefile")
-}
-
-
 ### extract forest gain ------ 
 g <- extract(gain, d, method = "simple")
 class(g)
@@ -116,3 +107,29 @@ tabs %>%
          percent.area = round(100*Freq/totcells, 2)) %>%
   dplyr::select(-c(Freq, totcells)) %>%
   spread(key = Var1, value = percent.area, fill = 0)
+
+
+##### IF I CHANGE HOW I CHARACTERIZE FOREST COVER -------
+
+# add in gain
+for(i in 12:19) {
+  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
+  g[[i]] <- overlay(forestcover[[i]], gain, fun=function(r1,r2){return(r1+r2)})
+  
+}
+
+# compare to see if it worked?
+plot(g[[12]])
+plot(forestcover[[12]])
+
+
+## rasterize buffer layer
+r <- raster()
+extent(r) <- extent(d)
+buffer <- rasterize(d, r, field = "rteno")
+
+# zonal statistics to get cell type counts?
+p2000 <- zonal(cover_bin, buffer, fun = "Count")
+# repeat for 2018 - change 
+
+# check output and see if can compute % of area (forest pixels / total pixels)

@@ -55,7 +55,6 @@ list <- c(paste("treecover200", seq(from = 2, to = 9), sep = ""),
           paste("treecover20", seq(from = 10, to = 19), sep = ""))
 
 # the rest of the years -------
-
 for(i in 2:19) {
   print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
   mask <- reclassify(loss, 
@@ -66,18 +65,19 @@ for(i in 2:19) {
 }
 
 
-# extract mean % forest
+# extract mean % forest ---------
 results <- vector("list")
 listb <- c(paste("FOREST_200", seq(from = 1, to = 9), sep = ""),
             paste("FOREST_20", seq(from = 10, to = 19), sep = ""))
+
 for(i in 1:19) {
+  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
   results[[i]] <- extract(forestcover[[i]], d, fun = mean, df = TRUE, normalizeWeights = TRUE)
   writeOGR(results[[i]], dsn = "/Users/kayla/Documents/thesis_data/arcmap", layer = listb[i], driver = "ESRI Shapefile")
   }
 
 
-# repeat for 3km buffered area
-
+# repeat for 3km buffered area -------
 results3km <- vector("list")
 for(i in 1:19) {
   print(paste0("Progress: ", round(i/19*100, 2), "% finished."))

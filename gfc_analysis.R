@@ -84,3 +84,34 @@ for(i in 1:19) {
   results[[i]] <- extract(forestcover[[i]], d3, fun = mean, df = TRUE, normalizeWeights = TRUE)
   writeOGR(results[[i]], dsn = "/Users/kayla/Documents/thesis_data/arcmap", layer = listb[i], driver = "ESRI Shapefile")
 }
+
+
+### extract forest gain ------ 
+g <- extract(gain, d, method = "simple")
+class(g)
+length(g)
+
+
+# try this later to see if we can get proportions
+# alternatively, look into tabulate area in arcmap
+
+# this is from http://zevross.com/blog/2015/03/30/map-and-analyze-raster-data-in-r/
+tabFunc <- function(indx, extract, rteno, rtename) {
+  dat <- as.data.frame(table(extract[[indx]]))
+  dat$name <- rteno[[rtename]][[indx]]
+  return(dat)
+}
+
+tabs <- lapply(seq(g), tabFunc, g, rteno, "rtename")
+tabs
+
+tabs <- do.call("rbind", tabs)
+
+tabs$Var1 <- factor(tabs$Var1, levels = c(0,1), labels = c("No gain", "Gain"))
+
+tabs %>%
+  group_by(rtename) %>%
+  mutate(totcells = sum(Freq),
+         percent.area = round(100*Freq/totcells, 2)) %>%
+  dplyr::select(-c(Freq, totcells)) %>%
+  spread(key = Var1, value = percent.area, fill = 0)

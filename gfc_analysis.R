@@ -3,9 +3,8 @@ library(rgdal)
 
 # load in ---------
 setwd("/Users/kayla/Documents/thesis_data/arcmap")
-d <- readOGR("buffer_dataset_1km.shp") # dataset where bbs coords <= 1 km from , buffer 1km
-# d2 <- readOGR("buffered_dataset.shp") # dataset where bbs coords <= 3 km from line, buffer 1km
-# d3 <- readOGR("buffer_dataset_3km.shp") # data where bbs coords <= 3 km from line, buffer 3 km
+d <- readOGR("buffer_dataset_1km.shp") # dataset where bbs coords <= 1 km from line
+d2 <- readOGR("buffered_dataset.shp") # dataset where bbs coords <= 3 km from line
 
 # determine which tiles in the GFC are needed to cover AOI -----------
 tiles <- calc_gfc_tiles(d)
@@ -36,100 +35,141 @@ writeRaster(gain, "forestgain.tif", format = "GTiff")
 
 
 
-## ANNUAL TREE COVER FROM 2000 TO 2019 ##
+## ANNUAL TREE COVER FROM 2000 TO 2019 ## ------
+setwd("C:/Users/kayla/Documents/thesis_data/arcmap")
+d <- readOGR("buffer_dataset_1km.shp")
 
-# initial 2001 -------
-mask <- reclassify(loss, 
-                   rbind(c(1,NA)))
+setwd("D:/forest_layers")
+cover <- raster("cover2000.tif")
+loss <- raster("lossyear.tif")
+gain <- raster("forestgain.tif")
 
-treecover2001 <- mask(cover, mask)
-writeRaster(treecover2001, "treecover2001.tif")
+# reclassify cover layer to binary (0 = no forest, 1 = forest) --------
+reclassify(cover,
+           c(1, 100, 1),
+           filename = "cover2000_binary.tif",
+           options="COMPRESS=LZW")
 
-# check plots -------
+cover_bin <- raster("cover2000_binary.tif")
+
+plot(cover_bin)
 plot(cover)
-plot(treecover2001)
 
+
+# reclassify 2001 -------
+isBecomes <- cbind(c(0:19), c(0, rep(NA, 1), seq(from = (1+1), to = 19)))
+isBecomes
+
+system.time(reclassify(loss,
+                       rcl = isBecomes,
+                       filename = "loss.tif",
+                       options = "COMPRESS=LZW"))
+
+lossyear <- raster("loss.tif")
+
+# masking 2001 -----
+mask(cover_bin, lossyear,
+     filename = "treecover2001.tif",
+     options = "COMPRESS=LZW")
+
+treecover2001 <- raster("treecover2001.tif")
+
+
+# set some stuff up -------
 forestcover <- vector("list")
 forestcover[1] <- treecover2001
 
-list <- c(paste("treecover200", seq(from = 2, to = 9), sep = ""),
+list <- c(paste("treecover200", seq(from = 1, to = 9), sep = ""),
           paste("treecover20", seq(from = 10, to = 19), sep = ""))
 
-# the rest of the years -------
-for(i in 2:19) {
-  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
-  mask <- reclassify(loss, 
-                     rbind(c(i,NA)))
+
+# the first batch of years -------
+for(i in 2:11) {
+  print(paste0("Progress: ", round(i/11*100, 2), "% finished."))
   
-  forestcover[[i]] <- mask(forestcover[[i-1]], mask)
-  writeRaster(cover[[i]], paste(list[i], ".tif", sep = ""))
-}
-
-
-# extract mean % forest ---------
-results <- vector("list")
-listb <- c(paste("FOREST_200", seq(from = 1, to = 9), sep = ""),
-            paste("FOREST_20", seq(from = 10, to = 19), sep = ""))
-
-for(i in 1:19) {
-  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
-  results[[i]] <- extract(forestcover[[i]], d, fun = mean, df = TRUE, normalizeWeights = TRUE)
-  writeOGR(results[[i]], dsn = "/Users/kayla/Documents/thesis_data/arcmap", layer = listb[i], driver = "ESRI Shapefile")
-  }
-
-
-### extract forest gain ------ 
-g <- extract(gain, d, method = "simple")
-class(g)
-length(g)
-
-
-# try this later to see if we can get proportions
-# alternatively, look into tabulate area in arcmap
-
-# this is from http://zevross.com/blog/2015/03/30/map-and-analyze-raster-data-in-r/
-tabFunc <- function(indx, extract, rteno, rtename) {
-  dat <- as.data.frame(table(extract[[indx]]))
-  dat$name <- rteno[[rtename]][[indx]]
-  return(dat)
-}
-
-tabs <- lapply(seq(g), tabFunc, g, rteno, "rtename")
-tabs
-
-tabs <- do.call("rbind", tabs)
-
-tabs$Var1 <- factor(tabs$Var1, levels = c(0,1), labels = c("No gain", "Gain"))
-
-tabs %>%
-  group_by(rtename) %>%
-  mutate(totcells = sum(Freq),
-         percent.area = round(100*Freq/totcells, 2)) %>%
-  dplyr::select(-c(Freq, totcells)) %>%
-  spread(key = Var1, value = percent.area, fill = 0)
-
-
-##### IF I CHANGE HOW I CHARACTERIZE FOREST COVER -------
-
-# add in gain
-for(i in 12:19) {
-  print(paste0("Progress: ", round(i/19*100, 2), "% finished."))
-  g[[i]] <- overlay(forestcover[[i]], gain, fun=function(r1,r2){return(r1+r2)})
+  isBecomes <- cbind(c(0:19), c(0, rep(NA, i), seq(from = (i+1), to = 19)))
   
+  # extract loss pixels from that year
+  reclassify(loss,
+             rcl = isBecomes,
+             filename = "loss.tif",
+             overwrite = TRUE,
+             options = "COMPRESS=LZW")
+  
+  lossyear <- raster("loss.tif")
+  
+  mask(forestcover[[i-1]], lossyear,
+       filename = paste(list[i], ".tif", sep = ""),
+       options = "COMPRESS=LZW")
+  
+  forestcover[[i]] <- raster(paste(list[i], ".tif", sep = ""))
 }
 
-# compare to see if it worked?
-plot(g[[12]])
-plot(forestcover[[12]])
+
+# add in gain for 2012, which will carry over into subsequent years
+overlay(forestcover[[11]], gain, fun=function(r1,r2){return(r1+r2)},
+        filename = "treecover2012_gain.tif"),
+options = c("COMPRESS=LZW")
+
+forestcover[[12]] <- raster("treecover2012_gain.tif")
+
+isisBecomes <- cbind(c(0:19), c(0, rep(NA, 12), seq(from = (12+1), to = 19)))
+
+# factor in 2012 loss to generate final file
+reclassify(loss,
+           rcl = isBecomes,
+           filename = "loss.tif",
+           overwrite = TRUE,
+           options = "COMPRESS=LZW")
+
+lossyear <- raster("loss.tif")
+
+mask(forestcover[[12]], lossyear,
+     filename = "treecover2012.tif",
+     options = "COMPRESS=LZW")
+
+forestcover[[12]] <- raster("treecover2012.tif")
 
 
-## rasterize buffer layer
-r <- raster()
-extent(r) <- extent(d)
-buffer <- rasterize(d, r, field = "rteno")
+# finish adding in loss for subsequent years --------
+for(i in 13:19) {
+  print(paste0("Progress: ", round(i/11*100, 2), "% finished."))
+  
+  isBecomes <- cbind(c(0:19), c(0, rep(NA, i), seq(from = (i+1), to = 19)))
+  
+  # extract loss pixels from that year
+  reclassify(loss,
+             rcl = isBecomes,
+             filename = "loss.tif",
+             overwrite = TRUE,
+             options = "COMPRESS=LZW")
+  
+  lossyear <- raster("loss.tif")
+  
+  mask(forestcover[[i-1]], lossyear,
+       filename = paste(list[i], ".tif", sep = ""),
+       options = "COMPRESS=LZW")
+  
+  forestcover[[i]] <- raster(paste(list[i], ".tif", sep = ""))
+}
 
-# zonal statistics to get cell type counts?
-p2000 <- zonal(cover_bin, buffer, fun = "Count")
-# repeat for 2018 - change 
 
-# check output and see if can compute % of area (forest pixels / total pixels)
+
+### EXTRACTING ANNUAL VALUES FROM SITES ###
+# reproject d
+d_proj<- spTransform(d, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+writeOGR(d_proj, "buffer_dataset_1km_proj.shp")
+
+# extract -----
+ovR0 = extract(cover_bin, d_proj)
+str(ovR0)
+
+# table -----
+tab <- lapply(ovR0, table)
+
+# calculate percentages ----
+for(i in 1:length(tab)){
+  s <- sum(tab[[i]])
+  mat <- as.matrix(tab[[i]])
+  landcover[i, paste("X", row.names(mat), sep="")] <- as.numeric(tab[[i]]/s)
+}

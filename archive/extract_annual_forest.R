@@ -2,7 +2,7 @@
 library(raster)
 library(rgdal)
 
-setwd(file.path('C:','Users','kayla','Documents','WORKING BBS DATA','BBS data','Working files - Mar27'))
+setwd("D:/US layers")
 
 buffer <-readOGR(dsn="/Users/kayla/Documents/WORKING BBS DATA/BBS data/Working files - Mar27", layer="buffer_Mar27")
 
